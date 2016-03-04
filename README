@@ -1,0 +1,7 @@
+This is fooaggregator. An RSS aggregator module for Drupal.
+
+This is the original code base from which https://www.drupal.org/project/fooaggregator
+has been forked at some point but I continued maintaining this code base.
+
+It has a different set of bugs and missing the other parsers from the drupal project
+but this code is actually being used for my own aggregator.
