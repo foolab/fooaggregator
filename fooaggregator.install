@@ -39,24 +39,6 @@ function fooaggregator_install() {
   }
 }
 
-function fooaggregator_update_1() {
-  $ret = array();
-  if ($GLOBALS['db_type'] == 'mysql') {
-    $ret[] = update_sql("alter table {fooaggregator_feed} add updated int(10) unsigned NOT NULL after checked");
-  }
-  return $ret;
-}
-
-function fooaggregator_update_2() {
-  $ret = array();
-  if ($GLOBALS['db_type'] == 'mysql') {
-    $ret[] = update_sql("alter table {fooaggregator_feed} change image image_url text");
-    $ret[] = update_sql("alter table {fooaggregator_feed} add image_title text after image_url");
-    $ret[] = update_sql("alter table {fooaggregator_feed} add image_link text after image_title");
-  }
-  return $ret;
-}
-
 /**
  * Implementation of hook_uninstall().
  */
