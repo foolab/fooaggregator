@@ -2,50 +2,115 @@
 // $Id$
 
 /**
- * Implementation of hook_install().
+ * Implementation of hook_schema().
  */
-function fooaggregator_install() {
-  switch ($GLOBALS['db_type']) {
-  case 'mysql':
-  case 'mysqli':
-    db_query("CREATE TABLE {fooaggregator} (
-              nid int(11) default NULL,
-              fid int(11) default NULL,
-              guid varchar(255) default NULL,
-              link varchar(255) default NULL,
-              KEY nid (nid),
-              KEY fid (fid, guid)
-              ) /*!40100 DEFAULT CHARACTER SET UTF8 */");
 
-    db_query("CREATE TABLE {fooaggregator_feed} (
-              fid int(10) unsigned NOT NULL auto_increment,
-              title varchar(255) default NULL,
-              url varchar(255) default NULL,
-              link varchar(255) default NULL,
-              etag varchar(255) default NULL,
-              refresh int(10) unsigned NOT NULL,
-              checked int(10) unsigned NOT NULL,
-              updated int(10) unsigned NOT NULL,
-              modified int(10) unsigned NOT NULL,
-              description longtext,
-              image_url text,
-              image_title text,
-              image_link text,
-              visible tinyint(4) NOT NULL default '1',
-              PRIMARY KEY  (fid)
-              ) /*!40100 DEFAULT CHARACTER SET UTF8 */");
+function fooaggregator_schema() {
+    $schema = array();
 
-    break;
-  }
+    $schema['fooaggregator'] = array(
+        'description' => 'Additional information about feed items',
+        'fields' => array(
+            'nid' => array(
+                'type' => 'int',
+                'not null' => TRUE,
+                'default' => 0,
+                'unsigned' => TRUE),
+            'fid' => array(
+                'type' => 'int',
+                'not null' => TRUE,
+                'default' => 0,
+                'unsigned' => TRUE),
+            'guid' => array(
+                'type' => 'varchar',
+                'length' => 255,
+                'not null' => TRUE,
+                'default' => ''),
+            'link' => array(
+                'type' => 'varchar',
+                'length' => 255,
+                'not null' => TRUE,
+                'default' => ''),
+        ),
+        'indexes' => array(
+            'nid' => array('nid'),
+            'fid' => array('fid', 'guid'),
+        ),
+    );
+
+    $schema['fooaggregator_feed'] = array(
+        'description' => 'Information about an RSS feed source',
+        'fields' => array(
+            'fid' => array(
+                'type' => 'int',
+                'not null' => TRUE,
+                'default' => 0,
+                'unsigned' => TRUE),
+            'title' => array(
+                'type' => 'varchar',
+                'length' => 255,
+                'not null' => TRUE,
+                'default' => ''),
+            'url' => array(
+                'type' => 'varchar',
+                'length' => 255,
+                'not null' => TRUE,
+                'default' => ''),
+            'link' => array(
+                'type' => 'varchar',
+                'length' => 255,
+                'not null' => TRUE,
+                'default' => ''),
+            'etag' => array(
+                'type' => 'varchar',
+                'length' => 255,
+                'not null' => TRUE,
+                'default' => ''),
+            'refresh' => array(
+                'type' => 'int',
+                'not null' => TRUE,
+                'default' => 0,
+                'unsigned' => TRUE),
+            'checked' => array(
+                'type' => 'int',
+                'not null' => TRUE,
+                'default' => 0,
+                'unsigned' => TRUE),
+            'updated' => array(
+                'type' => 'int',
+                'not null' => TRUE,
+                'default' => 0,
+                'unsigned' => TRUE),
+            'modified' => array(
+                'type' => 'int',
+                'not null' => TRUE,
+                'default' => 0,
+                'unsigned' => TRUE),
+            'description' => array(
+                'type' => 'text'),
+            'image_url' => array(
+                'type' => 'text'),
+            'image_title' => array(
+                'type' => 'text'),
+            'image_link' => array(
+                'type' => 'text'),
+            'visible' => array(
+                'type' => 'int',
+                'size' => 'tiny',
+                'not null' => TRUE,
+                'default' => 0,
+                'unsigned' => TRUE),
+        ),
+        'primary key' => array('fid'),
+    );
+
+    return $schema;
 }
 
 /**
  * Implementation of hook_uninstall().
  */
 function fooaggregator_uninstall() {
-  db_query('DROP TABLE {fooaggregator}');
-  db_query('DROP TABLE {fooaggregator_feed}');
-
   variable_del('fooaggregator_per_page');
   variable_del('fooaggregator_uid');
   variable_del('fooaggregator_per_cron');
