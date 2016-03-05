@@ -2,4 +2,4 @@
 name = FooAggregator
 description = "Aggregates syndicated content (RSS, RDF, and Atom feeds)."
 package = Fooaggregator
-core = 6.x
+core = 7.x
