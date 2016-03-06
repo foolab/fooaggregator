@@ -3,3 +3,6 @@ name = FooAggregator
 description = "Aggregates syndicated content (RSS, RDF, and Atom feeds)."
 package = Fooaggregator
 core = 7.x
+
+files[] = fooaggregator.views.inc
+files[] = views_handler_argument_fooaggregator_fid.inc

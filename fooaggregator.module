@@ -904,31 +904,38 @@ function theme_fooaggregator_author($variables) {
     $node = $variables['node'];
     return l($node->fooaggregator->feed->title, 'fooaggregator/source/'.$node->fooaggregator->feed->fid).' - '.format_date($node->created).'<br />';
 }
-// TODO:
+
 /**
  * theme the feed information part.
  *
  * @param $feed a feed object
  * @return an HTML string representing the themed feed information.
  */
-function theme_fooaggregator_feed($feed) {
-  $output .= theme('fooaggregator_feed_image', $feed);
-  $output .= l(check_plain($feed->title), check_plain($feed->link)).'<br />';
-  $output .= t('Checked: %time ago<br />', array('%time' => format_interval(time()-$feed->checked)));
-  $output .= t('Updated: %time ago<br />', array('%time' => format_interval(time()-$feed->updated)));
-  $output .= t('Update every: %time<br />', array('%time' => format_interval($feed->refresh)));
-  $output .= '<br />'.filter_xss($feed->description).'<br />';
+function theme_fooaggregator_feed($variables) {
+    $feed = $variables['feed'];
 
-  $feeds = drupal_add_feed($feed->url, $feed->title);
-  $output .= $feeds[$feed->url];
-  return theme('box', '', $output);
+    $output .= theme('fooaggregator_feed_image', array('feed' => $feed));
+    $output .= l(check_plain($feed->title), check_plain($feed->link)).'<br />';
+    $output .= t('Checked: %time ago<br />', array('%time' => format_interval(time()-$feed->checked)));
+    $output .= t('Updated: %time ago<br />', array('%time' => format_interval(time()-$feed->updated)));
+    $output .= t('Update every: %time<br />', array('%time' => format_interval($feed->refresh)));
+    $output .= '<br />'.filter_xss($feed->description).'<br />';
+
+    $feeds = drupal_add_feed($feed->url, $feed->title);
+    $output .= $feeds[$feed->url];
+    return '<div class="fooaggregator-feed">' . $output . '</div>';
 }
-// TODO:
-function theme_fooaggregator_feed_image($feed) {
-  if (($feed->image_link != '') && ($feed->image_url != '') && ($feed->image_title != '')) {
-    $image = theme('image', url($feed->image_url), $feed->image_title, $feed->image_title, NULL, false);
-    return '<div style="float: right;">'.l($image, url($feed->image_link), array('absolute' => TRUE, 'html' => TRUE, 'attributes' => array('target' => 'new'))).'</div>';
-  }
+
+function theme_fooaggregator_feed_image($variables) {
+    $feed = $variables['feed'];
+
+    if (($feed->image_link != '') && ($feed->image_url != '') && ($feed->image_title != '')) {
+        $image = theme('image', array(
+                           'path' => $feed->image_url,
+                           'title' => $feed->image_title,
+                       ));
+        return '<div style="float: right;">'.l($image, url($feed->image_link), array('absolute' => TRUE, 'html' => TRUE, 'attributes' => array('target' => 'new'))).'</div>';
+    }
 }
 
 /**
@@ -975,7 +982,7 @@ function fooaggregator_theme() {
 	       'fooaggregator_feed_image' => array('variables' => array('feed' => NULL)),
 	       );
 }
-// TODO:
+
 /**
  * Implementation of hook_views_api().
  */
