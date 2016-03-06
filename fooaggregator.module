@@ -372,7 +372,7 @@ function _fooaggregator_download(&$feed, &$xml) {
 
     return true;
 }
-// TODO:
+
 /**
  * log a warning via watchdog
  *
@@ -381,7 +381,7 @@ function _fooaggregator_download(&$feed, &$xml) {
 function _fooaggregator_log_warning($error) {
   watchdog('fooaggregator', $error, NULL, WATCHDOG_WARNING);
 }
-// TODO:
+
 /**
  * log an error via watchdog
  *
@@ -390,7 +390,7 @@ function _fooaggregator_log_warning($error) {
 function _fooaggregator_log_error($error) {
   watchdog('fooaggregator', $error, NULL, WATCHDOG_ERROR);
 }
-// TODO:
+
 /**
  * log a notice via watchdog
  *
@@ -445,7 +445,7 @@ function _fooaggregator_update_feed(&$feed) {
         ->condition('fid', $feed->fid)
         ->execute();
 }
-// TODO:
+
 /**
  * Check the feed and see if we have new or updated items.
  * Create new nodes or update old ones if needed.
@@ -459,24 +459,25 @@ function _fooaggregator_update_nodes(&$feed) {
   $n = 0; // not changed.
 
   foreach ($feed->items as $id => $item) {
-    // TODO: is there a way not to overload the database ?
-    $nid = _fooaggregator_guid_exists($item['guid'], $feed->fid);
-    if (!$nid) {
-      _fooaggregator_create_node($item, $feed->fid);
-      ++$a;
-    }
-    else {
-      if (_fooaggregator_update_node($item, $nid)) {
-	++$u;
+      // TODO: is there a way not to overload the database ?
+      $nid = _fooaggregator_guid_exists($item['guid'], $feed->fid);
+      if (!$nid) {
+          _fooaggregator_create_node($item, $feed->fid);
+          ++$a;
       }
       else {
-	++$n;
+          if (_fooaggregator_update_node($item, $nid)) {
+              ++$u;
+          }
+          else {
+              ++$n;
+          }
       }
-    }
   }
+
   _fooaggregator_log_notice(t('Updated feed %url. %a added. %u updated. %n not changed.', array('%url' => $feed->url, '%a' => $a, '%u' => $u, '%n' => $n)));
 }
-// TODO:
+
 /**
  * Update a node if needed.
  *
@@ -490,7 +491,7 @@ function _fooaggregator_update_node(&$item, $nid) {
   if ($item['time'] > $node->changed) {
     $node->changed = $item['time'];
     $node->fooaggregator = $item;
-    // todo: do we need to call node_submit() ?
+    // TODO: do we need to call node_submit() ?
     node_save($node);
     return true;
   }
@@ -1012,7 +1013,7 @@ function fooaggregator_feed_load($fid) {
 
   return $feeds[$fid];
 }
-// TODO:
+
 /**
  * Implements hook_node_view().
  */
