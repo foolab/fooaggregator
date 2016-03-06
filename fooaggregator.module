@@ -943,7 +943,7 @@ function fooaggregator_admin_update($fid) {
     }
     drupal_set_message($message);
     _fooaggregator_log_notice($message);
-//    drupal_goto('admin/content/fooaggregator');
+    drupal_goto('admin/content/fooaggregator');
 }
 
 /**
