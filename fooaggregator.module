@@ -214,14 +214,18 @@ function fooaggregator_delete($node) {
 function fooaggregator_cron() {
   $res;
   $limit = variable_get('fooaggregator_per_cron', 5);
-  if ($limit == -1) {
-    $res = db_query("SELECT * from {fooaggregator_feed} WHERE checked+refresh < %d order by updated ASC", time());
-  }
-  else {
-    $res = db_query_range("SELECT * from {fooaggregator_feed} WHERE checked+refresh < %d order by updated ASC", time(), 0, $limit);
+  $q = db_select('fooaggregator_feed', 'f')
+      ->fields('f')
+      ->where('checked + refresh < :time', array(':time' => time()))
+      ->orderBy('updated', 'ASC');
+
+  if ($limit != -1) {
+      $q = $q->range(0, $limit);
   }
 
-  while ($o = db_fetch_object($res)) {
+  $res = $q->execute();
+
+  foreach ($res as $o) {
     _fooaggregator_log_notice(t("Start to refresh blog: %title", array('%title' => $o->title)));
     fooaggregator_refresh($o);
     _fooaggregator_log_notice(t("Done to refresh blog: %title", array('%title' => $o->title)));
