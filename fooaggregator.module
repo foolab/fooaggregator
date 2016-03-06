@@ -2,7 +2,7 @@
 
 // todo:
 // multiple download methods.
-
+// TODO:
 /**
  * Implementation of hook_menu()
  */
@@ -94,58 +94,45 @@ function fooaggregator_node_info() {
   return array(
 	       'fooaggregator' => array(
 					'name' => t('RSS feed item.'),
-					'module' => 'fooaggregator',
+					'base' => 'fooaggregator',
 					'description' => t('RSS feed item.'),
+                    'locked' => TRUE,
 					)
 	       );
 }
 
 /**
- * Implementation of hook_perm()
+ * Implementation of hook_permission()
  */
-function fooaggregator_perm() {
-  return array('administer aggregator', 'access aggregator');
+function fooaggregator_permission() {
+    return array('administer aggregator' => array('title' => t('Administer FooAggregator')),
+                 'access aggregator' => array('title' => t('Access FooAggregator')));
 }
 
 /**
- * Implementation of hook_access();
+ * Implementation of hook_node_access();
  */
-function fooaggregator_access($op, $node) {
-if ($node->status == 0) {
-return FALSE;
-}
+function fooaggregator_node_access($node, $op, $account) {
+    if ($node->status == 0) {
+        return NODE_ACCESS_DENY;
+    }
 
-  if ($op == 'view') {
-      return user_access('access aggregator');
-  }
+    if ($op == 'view') {
+        return user_access('access aggregator');
+    }
+
+    return NODE_ACCESS_IGNORE;
 }
 
 /**
  * Implementation of hook_form()
  */
-function fooaggregator_form(&$node, &$param) {
-  $type = node_get_types('type', $node);
-
-  $form['title'] = array(
-			 '#type' => 'textfield',
-			 '#title' => check_plain($type->title_label),
-			 '#required' => TRUE,
-			 '#default_value' => $node->title,
-			 '#weight' => -5
-			 );
-
-  $form['body_filter']['body'] = array(
-				       '#type' => 'textarea',
-				       '#title' => check_plain($type->body_label),
-				       '#default_value' => $node->body,
-				       '#required' => FALSE
-				       );
-
-  $form['body_filter']['filter'] = filter_form($node->format);
-
-  return $form;
+// TODO:
+function fooaggregator_form($node, $form_state) {
+    return node_content_form($node, $form_state);
 }
 
+// TODO:
 /**
  * Implementation of hook_form_alter()
  *
@@ -163,44 +150,62 @@ function fooaggregator_form_alter($form_id, &$form) {
 /**
  * Implementation of hook_view()
  */
-function fooaggregator_view(&$node, $teaser = FALSE, $page = FALSE) {
-  $node = node_prepare($node, $teaser);
+function fooaggregator_view($node, $view_mode, $lang_code = NULL) {
   $node->content['fooaggregator_author'] = array(
-						 '#value' => theme('fooaggregator_author', $node),
-						 '#weight' => -1,
-						 );
+      '#markup' => theme('fooaggregator_author', array('node' => $node)),
+      '#weight' => -1,
+  );
+
   return $node;
 }
 
 /**
  * Implementation of hook_load()
  */
-function fooaggregator_load(&$node) {
-  $node->fooaggregator = db_fetch_array(db_query("select * from {fooaggregator} where nid=%d", $node->nid));
-  $node->fooaggregator['feed'] = fooaggregator_feed_load($node->fooaggregator['fid'], true);
+function fooaggregator_load($nodes) {
+    $result = db_query('SELECT * FROM {fooaggregator} WHERE nid IN (:nids)', array(':nids' => array_keys($nodes)));
+    foreach ($result as $record) {
+        $nodes[$record->nid]->fooaggregator = $record;
+        $nodes[$record->nid]->fooaggregator->feed = fooaggregator_feed_load($record->fid);
+    }
 }
 
 /**
  * Implementation of hook_insert()
  */
-function fooaggregator_insert(&$node) {
-  db_query("insert into {fooaggregator} (nid, fid, guid, link) VALUES(%d, %d, '%s', '%s')", $node->nid, $node->fooaggregator['fid'], $node->fooaggregator['guid'], $node->fooaggregator['link']);
+function fooaggregator_insert($node) {
+    db_insert('fooaggregator')
+        ->fields(array(
+                     'nid' => $node->nid,
+                     'fid' => $node->fooaggregator->fid,
+                     'guid' => $node->fooaggregator->guid,
+                     'link' => $node->fooaggregator->link,
+                 ))
+        ->execute();
 }
 
 /**
  * Implementation of hook_update()
  */
-function fooaggregator_update(&$node) {
-  db_query("update {fooaggregator} set guid='%s', link='%s' where nid=%d", $node->fooaggregator['guid'], $node->fooaggregator['link'], $node->nid);
+function fooaggregator_update($node) {
+    db_update('fooaggregator')
+        ->fields(array(
+                     'guid' => $node->fooaggregator->guid,
+                     'link' => $node->fooaggregator->link,
+                 ))
+        ->condition('nid', $node->nid)
+        ->execute();
 }
 
 /**
  * Implementation of hook_delete()
  */
-function fooaggregator_delete(&$node) {
-  db_query("delete from {fooaggregator} where nid=%d", $node->nid);
+function fooaggregator_delete($node) {
+    db_delete('fooaggregator')
+        ->condition('nid', $node->nid)
+        ->execute();
 }
-
+// TODO:
 /**
  * Implementation of hook_cron()
  *
@@ -230,44 +235,44 @@ function fooaggregator_cron() {
  * @return false in case of an error otherwise true (Even if the feed doesn't have new content).
  */
 function fooaggregator_refresh(&$feed) {
-  $xml = "";
+    $xml = "";
 
-  if (!_fooaggregator_download($feed, $xml)) {
-    // we failed to download the feed. We will just update the checked time and return.
-    _fooaggregator_update_checked($feed);
-    return false;
-  }
-  else if ($xml == '') {
-    // No error but we have no new items. 
-    _fooaggregator_update_feed($feed);
-    return true;
-  }
+    if (!_fooaggregator_download($feed, $xml)) {
+        // we failed to download the feed. We will just update the checked time and return.
+        _fooaggregator_update_checked($feed);
+        return false;
+    }
+    else if ($xml == '') {
+        // No error but we have no new items. 
+        _fooaggregator_update_feed($feed);
+        return true;
+    }
 
-  $obj = _fooaggregator_parse($feed, $xml);
+    $obj = _fooaggregator_parse($feed, $xml);
 
-  $error = '';
-  if (!$obj->ok($error)) {
-    $message = t('Failed to parse %title, %error', array(
-							 '%title' => $feed->title,
-							 '%error' => $error,
-							 ));
-    _fooaggregator_log_error($message);
-    _fooaggregator_update_checked($feed);
+    $error = '';
+    if (!$obj->ok($error)) {
+        $message = t('Failed to parse %title, %error', array(
+                         '%title' => $feed->title,
+                         '%error' => $error,
+                     ));
+        _fooaggregator_log_error($message);
+        _fooaggregator_update_checked($feed);
+
+        $obj->__destruct();
+        unset($obj);
+
+        return false;
+    }
+
+    _fooaggregator_update($obj);
 
     $obj->__destruct();
+
+    unset($xml);
     unset($obj);
 
-    return false;
-  }
-
-  _fooaggregator_update($obj);
-
-  $obj->__destruct();
-
-  unset($xml);
-  unset($obj);
-
-  return true;
+    return true;
 }
 
 /**
@@ -276,7 +281,12 @@ function fooaggregator_refresh(&$feed) {
  * @param $feed a feed object
  */
 function _fooaggregator_update_checked(&$feed) {
-  db_query("update {fooaggregator_feed} set checked=%d where fid=%d", $feed->checked, $feed->fid);
+    db_update('fooaggregator_feed')
+        ->fields(array(
+                     'checked' => $feed->checked,
+                 ))
+        ->condition('fid', $feed->fid)
+        ->execute();
 }
 
 /**
@@ -288,66 +298,66 @@ function _fooaggregator_update_checked(&$feed) {
  * @return false if we have an error and it will be logged otherwise true even if the feed has no new content.
  */
 function _fooaggregator_download(&$feed, &$xml) {
-  $headers = array();
+    $headers = array();
 
-  if ($feed->etag) {
-    $headers['If-None-Match'] = $feed->etag;
-  }
+    if ($feed->etag) {
+        $headers['If-None-Match'] = $feed->etag;
+    }
 
-  if ($feed->modified) {
-    $headers['If-Modified-Since'] = gmdate('D, d M Y H:i:s', $feed->modified) .' GMT';
-  }
+    if ($feed->modified) {
+        $headers['If-Modified-Since'] = gmdate('D, d M Y H:i:s', $feed->modified) .' GMT';
+    }
 
-  $result = drupal_http_request($feed->url, $headers);
+    $result = drupal_http_request($feed->url, $headers);
 
-  switch ($result->code) {
-  case 304:
-    _fooaggregator_log_notice(t('No new content for %url', array('%url' => $feed->url)));
-    $feed->checked = time();
-    break;
+    switch ($result->code) {
+    case 304:
+        _fooaggregator_log_notice(t('No new content for %url', array('%url' => $feed->url)));
+        $feed->checked = time();
+        break;
 
-  case 301:
-    _fooaggregator_log_warning(t('Updated URL for feed from %old to %new', array(
+    case 301:
+        _fooaggregator_log_warning(t('Updated URL for feed from %old to %new', array(
 										 '%old' => $feed->url,
 										 '%new' => $result->redirect_url,
-)));
-    $feed->url = $result->redirect_url; 
+                                     )));
+        $feed->url = $result->redirect_url; 
 
-  case 200:
-  case 302:
-  case 307:
-    $feed->checked = time();
-    if (($result->headers['Content-Length']) && ($result->headers['Content-Length'] == 0)) {
-      break;
+    case 200:
+    case 302:
+    case 307:
+        $feed->checked = time();
+        if (($result->headers['Content-Length']) && ($result->headers['Content-Length'] == 0)) {
+            break;
+        }
+
+        if ($result->data == '') {
+            break;
+        }
+
+        $feed->updated = $feed->checked;
+        $xml = $result->data;
+        break;
+    default:
+        _fooaggregator_log_error(t('HTTP error %number - "%error" while getting %url', array(
+                                       '%number' => $result->code,
+                                       '%error' => $result->error,
+                                       '%url' => $feed->url,
+                                   )));
+        $feed->checked = time();
+        return false;
     }
 
-    if ($result->data == '') {
-      break;
+    // update etag and modified
+    if ($result->headers['Last-Modified']) {
+        $feed->modified = strtotime($result->headers['Last-Modified']);
     }
 
-    $feed->updated = $feed->checked;
-    $xml = $result->data;
-    break;
-  default:
-    _fooaggregator_log_error(t('HTTP error %number - "%error" while getting %url', array(
-											 '%number' => $result->code,
-											 '%error' => $result->error,
-											 '%url' => $feed->url,
-											 )));
-    $feed->checked = time();
-    return false;
-  }
+    $feed->etag = $result->headers['ETag'];
 
-  // update etag and modified
-  if ($result->headers['Last-Modified']) {
-    $feed->modified = strtotime($result->headers['Last-Modified']);
-  }
-
-  $feed->etag = $result->headers['ETag'];
-
-  return true;
+    return true;
 }
-
+// TODO:
 /**
  * log a warning via watchdog
  *
@@ -356,7 +366,7 @@ function _fooaggregator_download(&$feed, &$xml) {
 function _fooaggregator_log_warning($error) {
   watchdog('fooaggregator', $error, NULL, WATCHDOG_WARNING);
 }
-
+// TODO:
 /**
  * log an error via watchdog
  *
@@ -365,7 +375,7 @@ function _fooaggregator_log_warning($error) {
 function _fooaggregator_log_error($error) {
   watchdog('fooaggregator', $error, NULL, WATCHDOG_ERROR);
 }
-
+// TODO:
 /**
  * log a notice via watchdog
  *
@@ -383,10 +393,10 @@ function _fooaggregator_log_notice($error) {
  * @return a FooFeed object
  */
 function _fooaggregator_parse(&$feed, &$string) {
-  require_once 'foofeed.inc';
+    require_once 'foofeed.inc';
 
-  $obj =& new FooFeed($feed, $string);
-  return $obj;
+    $obj =& new FooFeed($feed, $string);
+    return $obj;
 }
 
 /**
@@ -405,9 +415,22 @@ function _fooaggregator_update(&$feed) {
  * @param $feed a FooFeed object.
  */
 function _fooaggregator_update_feed(&$feed) {
-  db_query("update {fooaggregator_feed} set link = '%s', etag = '%s', checked = %d, updated = %d, modified = %d, description = '%s', image_title = '%s', image_link = '%s', image_url = '%s'  where fid=%d", $feed->link, $feed->etag, $feed->checked, $feed->updated, $feed->modified, $feed->description, $feed->image_title, $feed->image_link, $feed->image_url, $feed->fid);
+    db_update('fooaggregator_feed')
+        ->fields(array(
+                     'link' => $feed->link,
+                     'etag' => $feed->etag,
+                     'checked' => $feed->checked,
+                     'updated' => $feed->updated,
+                     'modified' => $feed->modified,
+                     'description' => $feed->description,
+                     'image_title' => $feed->image_title,
+                     'image_link' => $feed->image_link,
+                     'image_url' => $feed->image_url,
+                 ))
+        ->condition('fid', $feed->fid)
+        ->execute();
 }
-
+// TODO:
 /**
  * Check the feed and see if we have new or updated items.
  * Create new nodes or update old ones if needed.
@@ -421,7 +444,7 @@ function _fooaggregator_update_nodes(&$feed) {
   $n = 0; // not changed.
 
   foreach ($feed->items as $id => $item) {
-    // todo: bteere way not to overload the database ?
+    // TODO: is there a way not to overload the database ?
     $nid = _fooaggregator_guid_exists($item['guid'], $feed->fid);
     if (!$nid) {
       _fooaggregator_create_node($item, $feed->fid);
@@ -438,7 +461,7 @@ function _fooaggregator_update_nodes(&$feed) {
   }
   _fooaggregator_log_notice(t('Updated feed %url. %a added. %u updated. %n not changed.', array('%url' => $feed->url, '%a' => $a, '%u' => $u, '%n' => $n)));
 }
-
+// TODO:
 /**
  * Update a node if needed.
  *
@@ -467,8 +490,10 @@ function _fooaggregator_update_node(&$item, $nid) {
  * @return the node ID or 0 if nothing exists.
  */
 function _fooaggregator_guid_exists($guid, $fid) {
-  $res = db_fetch_object(db_query("select nid from {fooaggregator} where fid=%d and guid='%s' limit 1", $fid, $guid));
-  return $res->nid;
+    // TODO: limit is not portable?
+    $res = db_query("select nid from {fooaggregator} where fid=:fid and guid=:guid limit 1", array(':fid' => $fid, ':guid' => $guid))->fetchObject();
+
+    return is_object($res) ? $res->nid : 0;
 }
 
 /**
@@ -494,8 +519,8 @@ function _fooaggregator_create_node($item, $fid) {
 
   $node->created = $item['time'];
   $node->changed = $item['time'];
-  $node->fooaggregator = $item;
-  $node->fooaggregator['fid'] = $fid;
+  $node->fooaggregator = (object)$item;
+  $node->fooaggregator->fid = $fid;
 
   $node = node_submit($node);
 
@@ -512,10 +537,10 @@ function _fooaggregator_create_node($item, $fid) {
  */
 function fooaggregator_admin() {
   $counts = array();
-  $res = db_query("select fid, COUNT(nid) as count from {fooaggregator} group by fid");
+  $result = db_query("select fid, COUNT(nid) as count from {fooaggregator} group by fid");
 
-  while ($o = db_fetch_object($res)) {
-    $counts[$o->fid] = $o->count;
+  foreach ($result as $record) {
+      $counts[$record->fid] = $record->count;
   }
 
   $rows = array();
@@ -525,31 +550,34 @@ function fooaggregator_admin() {
 
   $result = db_query("select * from {fooaggregator_feed}");
 
-  while ($feed = db_fetch_object($result)) {
+  foreach ($result as $record) {
     ++$total;
-    $row = array();
-    $row[] = l($feed->title, 'fooaggregator/source/'.$feed->fid);
-    $row[] = format_plural($counts[$feed->fid] ? $counts[$feed->fid] : 0, '1 item', '@count items');
-    $row[] = $feed->checked ? t('@time ago', array('@time' => format_interval(time() - $feed->checked))) : t('never');
-    $row[] = $feed->updated ? t('@time ago', array('@time' => format_interval(time() - $feed->updated))) : t('never');
-    $row[] = ($feed->checked ? t('%time left', array('%time' => format_interval($feed->checked + $feed->refresh - time()))) : t('never'));
 
-    $row[] = l(t('edit'), 'admin/content/fooaggregator/edit/'.$feed->fid);
-    $row[] = l(t('delete'), 'admin/content/fooaggregator/delete/'.$feed->fid);
-    $row[] = l(t('update items'), 'admin/content/fooaggregator/update/'.$feed->fid);
-    $row[] = l(t('delete items'), 'admin/content/fooaggregator/clear/'.$feed->fid);
-    if (time() - $feed->checked > $feed->refresh) {
-      $rows[] = array('class' => 'error', 'data' => $row);
+    $row = array();
+    $row[] = l($record->title, 'fooaggregator/source/'.$record->fid);
+    $row[] = format_plural($counts[$record->fid] ? $counts[$record->fid] : 0, '1 item', '@count items');
+    $row[] = $record->checked ? t('@time ago', array('@time' => format_interval(time() - $record->checked))) : t('never');
+    $row[] = $record->updated ? t('@time ago', array('@time' => format_interval(time() - $record->updated))) : t('never');
+    $row[] = ($record->checked ? t('%time left', array('%time' => format_interval($record->checked + $record->refresh - time()))) : t('never'));
+
+    $row[] = l(t('edit'), 'admin/content/fooaggregator/edit/'.$record->fid);
+    $row[] = l(t('delete'), 'admin/content/fooaggregator/delete/'.$record->fid);
+    $row[] = l(t('update items'), 'admin/content/fooaggregator/update/'.$record->fid);
+    $row[] = l(t('delete items'), 'admin/content/fooaggregator/clear/'.$record->fid);
+    if (time() - $record->checked > $record->refresh) {
+        $rows[] = array('class' => array('error'), 'data' => $row);
       ++$needs_updating;
     }
     else {
-      $rows[] = $row;
+        $rows[] = array('data' => $row);
     }
   }
 
   drupal_set_message(t('Total: %total. Needs updating: %needs_updating', array('%total' => $total, '%needs_updating' => $needs_updating)));
 
-  return theme('table', array(t('Title'), t('Items'), t('Last check'), t('Last update'), t('Next update'), array('data' => t('Operations'), 'colspan' => 4)), $rows);
+  $header = array(t('Title'), t('Items'), t('Last check'), t('Last update'), t('Next update'), array('data' => t('Operations'), 'colspan' => 4));
+
+  return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array()));
 }
 
 /**
@@ -567,7 +595,7 @@ function fooaggregator_admin_settings() {
   $users = array();
 
   $res = db_query("select uid, name from {users}");
-  while ($o = db_fetch_object($res)) {
+  foreach ($res as $o) {
     $users[$o->uid] = $o->name;
   }
   $users[0] = variable_get('anonymous', t('Anonymous'));
@@ -597,52 +625,52 @@ function fooaggregator_admin_settings() {
 					'#options' => $filters,
 					'#default_value' => variable_get('fooaggregator_filter', 1),
 					);
-  //  print_r($filters);
+
   return system_settings_form($form);
 }
 
 /**
  * Displays the import page.
  */
-function fooaggregator_admin_import(&$form_state) {
+function fooaggregator_admin_import($form, &$form_state) {
   $form = array();
 
   $form['warning'] = array(
-			   '#type' => 'markup',
-			   '#value' => t('This will delete any feeds you have added manually and will import the feeds from the drupal aggregator module.<br /><b>We might not be able to empty the current tables in one run. Please rerun the process until you get a <u>success</u> message</b>.'),
-			   '#suffix' => '<br /><br />',
-			   );
+      '#type' => 'markup',
+      '#value' => t('This will delete any feeds you have added manually and will import the feeds from the drupal aggregator module.<br /><b>We might not be able to empty the current tables in one run. Please rerun the process until you get a <u>success</u> message</b>.'),
+      '#suffix' => '<br /><br />',
+  );
 
   $form['import'] = array(
-			  '#type' => 'submit',
-			  '#value' => t('Import'),
-			  );
+      '#type' => 'submit',
+      '#value' => t('Import'),
+  );
 
   return $form;
 }
-
+// TODO:
 /**
  * Implementation of hook_form_submit() for the import page
  * this will clear the fooaggregator created items, clear the feeds table
  * and reimport the core aggregator feeds.
  */
 function fooaggregator_admin_import_submit($form, &$form_state) {
-  if (user_access('administer aggregator')) {
-    // todo: What if cron is running ?
-    $count = 0;
-    $res = db_query_range("select nid from node where type='fooaggregator'", 20);
-    while ($o = db_fetch_object($res)) {
-      node_delete($o->nid);
-      $count++;
-    }
+    if (user_access('administer aggregator')) {
+        // TODO: What if cron is running ?
+        $count = 0;
+        $res = db_query_range("select nid from node where type='fooaggregator'", 20);
+        while ($o = db_fetch_object($res)) {
+            node_delete($o->nid);
+            $count++;
+        }
 
-    if ($count == 0) {
-      db_query("delete from {fooaggregator}");
-      db_query("delete from {fooaggregator_feed}");
+        if ($count == 0) {
+            db_query("delete from {fooaggregator}");
+            db_query("delete from {fooaggregator_feed}");
 
-      module_invoke_all('fooaggregatorapi', 'wipe');
+            module_invoke_all('fooaggregatorapi', 'wipe');
 
-      $res = db_query("select fid, title, url, refresh from {aggregator_feed} order by fid ASC");
+            $res = db_query("select fid, title, url, refresh from {aggregator_feed} order by fid ASC");
       while ($o = db_fetch_object($res)) {
 	db_query("insert into {fooaggregator_feed} (fid, title, url, refresh) VALUES(%d, '%s', '%s', %d)", $o->fid, $o->title, $o->url, $o->refresh);
       }
@@ -660,15 +688,15 @@ function fooaggregator_admin_import_submit($form, &$form_state) {
 /**
  * Displays the feed add form.
  */
-function fooaggregator_admin_add(&$form_state) {
-  return _fooaggregator_admin_form(0);
+function fooaggregator_admin_add($form, &$form_state) {
+    return _fooaggregator_admin_form($form, 0);
 }
 
 /**
  * Displays the feed edit form.
  */
-function fooaggregator_admin_edit(&$form_state, $fid) {
-  return _fooaggregator_admin_form($fid);
+function fooaggregator_admin_edit($form, &$form_state, $fid) {
+    return _fooaggregator_admin_form($form, $fid);
 }
 
 /**
@@ -677,50 +705,48 @@ function fooaggregator_admin_edit(&$form_state, $fid) {
  * @param $fid a feed ID or 0 if we want a form to add not edit.
  * @return the form.
  */
-function _fooaggregator_admin_form($fid) {
-  $feed = array('refresh' => '7200', 'visible' => 1);
+function _fooaggregator_admin_form($form, $fid) {
+    $feed = (object)array('refresh' => '7200', 'visible' => 1);
 
-  if ($fid) {
-    $feed = db_fetch_array(db_query('select * from {fooaggregator_feed} where fid=%d', $fid));
-  }
+    if ($fid) {
+        $feed = db_query('select * from {fooaggregator_feed} where fid=:fid', array(':fid' => $fid))->fetchObject();
+    }
 
-  $form = array();
+    $form['title'] = array(
+        '#title' => t('Title'),
+        '#type' => 'textfield',
+        '#required' => TRUE,
+        '#default_value' => $feed->title,
+    );
+    $form['url'] = array(
+        '#title' => t('URL'),
+        '#type' => 'textfield',
+        '#required' => TRUE,
+        '#default_value' => $feed->url,
+    );
+    $form['refresh'] = array(
+        '#title' => t('Update interval'),
+        '#type' => 'select',
+        '#options' => drupal_map_assoc(array(900, 1800, 3600, 7200, 10800, 21600, 32400, 43200, 64800, 86400, 172800, 259200, 604800, 1209600, 2419200), 'format_interval'),
+        '#default_value' => $feed->refresh,
+    );
 
-  $form['title'] = array(
-			 '#title' => t('Title'),
-			 '#type' => 'textfield',
-			 '#required' => TRUE,
-			 '#default_value' => $feed['title'],
-			 );
-  $form['url'] = array(
-		       '#title' => t('URL'),
-		       '#type' => 'textfield',
-		       '#required' => TRUE,
-		       '#default_value' => $feed['url'],
-		       );
-  $form['refresh'] = array(
-			   '#title' => t('Update interval'),
-			   '#type' => 'select',
-			   '#options' => drupal_map_assoc(array(900, 1800, 3600, 7200, 10800, 21600, 32400, 43200, 64800, 86400, 172800, 259200, 604800, 1209600, 2419200), 'format_interval'),
-			   '#default_value' => $feed['refresh'],
-			   );
+    $form['visible'] = array(
+        '#title' => t('Visible in the main aggregator page.'),
+        '#type' => 'checkbox',
+        '#default_value' => $feed->visible,
+        '#description' => t('This setting determines the visibility of this feed in the <a href="@page_url">news aggregator</a>', array('@page_url' => url('fooaggregator'))),
+    );
 
-  $form['visible'] = array(
-			   '#title' => t('Visible in the main aggregator page.'),
-			   '#type' => 'checkbox',
-			   '#default_value' => $feed['visible'],
-			   '#description' => t('This setting determines the visibility of this feed in the <a href="@page_url">news aggregator</a>', array('@page_url' => url('fooaggregator'))),
-			   );
+    $form['save'] = array(
+        '#type' => 'submit',
+        '#value' => t('Save')
+    );
+    if ($fid) {
+        $form['fid'] = array('#type' => 'hidden', '#value' => $fid);
+    }
 
-  $form['save'] = array(
-			'#type' => 'submit',
-			'#value' => t('Save')
-			);
-  if ($fid) {
-    $form['fid'] = array('#type' => 'hidden', '#value' => $fid);
-  }
-
-  return $form;
+    return $form;
 }
 
 /**
@@ -733,8 +759,9 @@ function fooaggregator_admin_edit_validate($form, &$form_state) {
   $fid = $form_state['values']['fid'];
   $url = $form_state['values']['url'];
   $count = 0;
-  $q = db_query("select fid from {fooaggregator_feed} where url = '%s' and fid != %d", $url, $fid);
-  while ($o = db_fetch_object($q)) {
+  $q = db_query("select fid from {fooaggregator_feed} where url = :url and fid != :fid",
+                array(':url' => $url, ':fid' => $fid));
+  foreach ($q as $o) {
     $count++;
   }
 
@@ -752,9 +779,9 @@ function fooaggregator_admin_add_validate($form, &$form_state) {
 
   $url = $form_state['values']['url'];
   $count = 0;
-  $q = db_query("select fid from {fooaggregator_feed} where url = '%s'", $form['url']);
+  $q = db_query("select fid from {fooaggregator_feed} where url = :url", array(':url' => $form_state['values']['url']));
 
-  while ($o = db_fetch_object($q)) {
+  foreach ($q as $o) {
     $count++;
   }
 
@@ -768,7 +795,17 @@ function fooaggregator_admin_add_validate($form, &$form_state) {
  * This does the actual work of adding a new feed.
  */
 function fooaggregator_admin_add_submit($form, &$form_state) {
-  db_query("insert into {fooaggregator_feed} (title, url, refresh, visible) VALUES('%s', '%s', %d, %d)", $form_state['values']['title'], $form_state['values']['url'], $form_state['values']['refresh'], $form_state['values']['visible']);
+    db_insert('fooaggregator_feed')
+        ->fields(array(
+                     'title' => $form_state['values']['title'],
+                     'url' => $form_state['values']['url'],
+                     'refresh' => $form_state['values']['refresh'],
+                     'visible' => $form_state['values']['visible'],
+                     'checked' => 0, // TODO: This is needed for upgrades only
+                     'updated' => 0,
+                     'modified' => 0,
+                 ))
+        ->execute();
 
   $message = t('Added feed %title', array('%title' => $form_state['values']['title']));
   drupal_set_message($message);
@@ -780,7 +817,15 @@ function fooaggregator_admin_add_submit($form, &$form_state) {
  * This does the actual work of updating a feed.
  */
 function fooaggregator_admin_edit_submit($form, &$form_state) {
-  db_query("update {fooaggregator_feed} set title='%s', url='%s', refresh=%d, visible=%d where fid=%d", $form_state['values']['title'], $form_state['values']['url'], $form_state['values']['refresh'], $form_state['values']['visible'], $form_state['values']['fid']);
+    db_update('fooaggregator_feed')
+        ->fields(array(
+                     'title' => $form_state['values']['title'],
+                     'url' =>  $form_state['values']['url'],
+                     'refresh' =>  $form_state['values']['refresh'],
+                     'visible' =>  $form_state['values']['visible'],
+                 ))
+        ->condition('fid', $form_state['values']['fid'])
+        ->execute();
 
   $message = t('Updated feed %title', array('%title' => $form_state['values']['title']));
   drupal_set_message($message);
@@ -794,17 +839,18 @@ function fooaggregator_admin_edit_submit($form, &$form_state) {
  *
  * @param $fid a feed ID
  */
-function fooaggregator_admin_delete(&$form_state, $fid) {
-  // todo: what if the cron is running and it updated the feed after we deleted it ?
-  $feed = db_fetch_object(db_query("select * from {fooaggregator_feed} where fid=%d", $fid));
-  if ($feed) {
-    $form['fid'] = array('#type' => 'hidden', '#value' => $fid);
-    return confirm_form($form, t('Are you sure you want to delete the feed "%title" ?', array('%title' => $feed->title)), 'admin/content/fooaggregator', NULL, t('Delete'));
-  }
-  else {
-    drupal_set_message(t('The feed id %id doesn\'t exist.', array('%id' => $fid)), 'error');
-    drupal_goto('admin/content/fooaggregator');
-  }
+function fooaggregator_admin_delete($form, &$form_state, $fid) {
+    // TODO: what if the cron is running and it updated the feed after we deleted it ?
+    $feed = db_query("select * from {fooaggregator_feed} where fid=:fid",
+                     array(':fid' => $fid))->fetchObject();
+    if ($feed) {
+        $form['fid'] = array('#type' => 'hidden', '#value' => $fid);
+        return confirm_form($form, t('Are you sure you want to delete the feed "%title" ?', array('%title' => $feed->title)), 'admin/content/fooaggregator', NULL, t('Delete'));
+    }
+    else {
+        drupal_set_message(t('The feed id %id doesn\'t exist.', array('%id' => $fid)), 'error');
+        drupal_goto('admin/content/fooaggregator');
+    }
 }
 
 /**
@@ -812,21 +858,24 @@ function fooaggregator_admin_delete(&$form_state, $fid) {
  * this function will delete the actual feed and items.
  */
 function fooaggregator_admin_delete_submit($form, &$form_state) {
-  // todo: what if the cron is running and it updated the feed after we deleted it ?
-  // todo: what if some users marked some items as favorites ?
+    // TODO: what if the cron is running and it updated the feed after we deleted it ?
+    // TODO: what if some users marked some items as favorites ?
 
-  if (($form_state['values']['confirm']) && user_access('administer aggregator')) {
-    $feed = db_fetch_object(db_query("select * from {fooaggregator_feed} where fid=%d", $form_state['values']['fid']));
-    $nids = _fooaggregator_admin_clear($feed);
-    db_query("delete from {fooaggregator_feed} where fid=%d", $form_state['values']['fid']);
-    $message = t('Deleted feed %title', array('%title' => $feed->title));
-    drupal_set_message($message);
-    _fooaggregator_log_notice($message);
+    if (($form_state['values']['confirm']) && user_access('administer aggregator')) {
+        $feed = db_query("select * from {fooaggregator_feed} where fid=:fid", array('fid' => $form_state['values']['fid']))->fetchObject();
+        $nids = _fooaggregator_admin_clear($feed);
+        db_delete('fooaggregator_feed')
+            ->condition('fid', $form_state['values']['fid'])
+            ->execute();
 
-    module_invoke_all('fooaggregatorapi', 'wipe_feed', $form['fid'], $nids);
-  }
+        $message = t('Deleted feed %title', array('%title' => $feed->title));
+        drupal_set_message($message);
+        _fooaggregator_log_notice($message);
 
-  $form_state['redirect'] = 'admin/content/fooaggregator';
+        module_invoke_all('fooaggregatorapi', 'wipe_feed', $form['fid'], $nids);
+    }
+
+    $form_state['redirect'] = 'admin/content/fooaggregator';
 }
 
 /**
@@ -849,29 +898,32 @@ function fooaggregator_admin_clear($fid) {
  * @return an array of the node ids deleted.
  */
 function _fooaggregator_admin_clear(&$feed) {
-  $nids = array();
-  $count = 0;
-  if (user_access('administer aggregator')) {
-    $res = db_query("select nid from {fooaggregator} where fid=%d", $feed->fid);
-    while ($o = db_fetch_object($res)) {
-      $nids[$o->nid] = $o->nid;
-      node_delete($o->nid);
-      $count++;
-    }
-    $message = t('Deleted %items from feed %title', array(
-							  '%items' => format_plural($count, '1 item', '@count items'),
-							  '%title' => $feed->title,
-							  ));
-    drupal_set_message($message);
-    _fooaggregator_log_notice($message);
+    // TODO: catch the exception and return a bool?
+    $nids = array();
+    $count = 0;
+    if (user_access('administer aggregator')) {
+        $res = db_query("select nid from {fooaggregator} where fid=:fid", array(':fid' => $feed->fid));
+        foreach ($res as $o) {
+            $nids[$o->nid] = $o->nid;
+            $count++;
+        }
 
-    $feed->checked = 0;
-    $feed->updated = 0;
-    $feed->modified = 0;
-    $feed->etag = '';
-    _fooaggregator_update_feed($feed);
-    return $nids;
-  }
+        node_delete_multiple($nids);
+
+        $message = t('Deleted %items from feed %title', array(
+                         '%items' => format_plural($count, '1 item', '@count items'),
+                         '%title' => $feed->title,
+                     ));
+        drupal_set_message($message);
+        _fooaggregator_log_notice($message);
+
+        $feed->checked = 0;
+        $feed->updated = 0;
+        $feed->modified = 0;
+        $feed->etag = '';
+        _fooaggregator_update_feed($feed);
+        return $nids;
+    }
 }
 
 /**
@@ -880,29 +932,28 @@ function _fooaggregator_admin_clear(&$feed) {
  * @param $fid a feed ID
  */
 function fooaggregator_admin_update($fid) {
-  $message = "";
-  $feed = fooaggregator_feed_load($fid);
-  if (fooaggregator_refresh($feed)) {
-    $message = t('Updated items for feed %title', array('%title' => $feed->title));
-  }
-  else {
-    $message = t('Failed to update items for feed %title', array('%title' => $feed->title));
-  }
-  drupal_set_message($message);
-  _fooaggregator_log_notice($message);
-  drupal_goto('admin/content/fooaggregator');
+    $message = "";
+    $feed = fooaggregator_feed_load($fid);
+
+    if (fooaggregator_refresh($feed)) {
+        $message = t('Updated items for feed %title', array('%title' => $feed->title));
+    }
+    else {
+        $message = t('Failed to update items for feed %title', array('%title' => $feed->title));
+    }
+    drupal_set_message($message);
+    _fooaggregator_log_notice($message);
+//    drupal_goto('admin/content/fooaggregator');
 }
 
 /**
  * theme the author part of the feed item.
- *
- * @param $node a drupal node object
- * @return an HTML string representing the themed feed item author.
  */
-function theme_fooaggregator_author($node) {
-  return l($node->fooaggregator['feed']['title'], 'fooaggregator/source/'.$node->fooaggregator['feed']['fid']).' - '.format_date($node->created).'<br />';
+function theme_fooaggregator_author($variables) {
+    $node = $variables['node'];
+    return l($node->fooaggregator->feed->title, 'fooaggregator/source/'.$node->fooaggregator->feed->fid).' - '.format_date($node->created).'<br />';
 }
-
+// TODO:
 /**
  * theme the feed information part.
  *
@@ -921,7 +972,7 @@ function theme_fooaggregator_feed($feed) {
   $output .= $feeds[$feed->url];
   return theme('box', '', $output);
 }
-
+// TODO:
 function theme_fooaggregator_feed_image($feed) {
   if (($feed->image_link != '') && ($feed->image_url != '') && ($feed->image_title != '')) {
     $image = theme('image', url($feed->image_url), $feed->image_title, $feed->image_title, NULL, false);
@@ -936,15 +987,17 @@ function theme_fooaggregator_feed_image($feed) {
  * @param $to_arr whether to return it as an object or as an array
  * @return a feed object or array.
  */
-function fooaggregator_feed_load($fid, $to_arr = false) {
+function fooaggregator_feed_load($fid) {
   static $feeds = array();
-  if (!$feeds[$fid]) {
-    $feeds[$fid] = db_fetch_array(db_query("select * from {fooaggregator_feed} where fid=%d", $fid));
+
+  if (!in_array($fid, $feeds)) {
+      $result = db_query("select * from {fooaggregator_feed} where fid=:fid", array(':fid' => $fid));
+      $feeds[$fid] = $result->fetchObject();
   }
 
-  return ($to_arr) ? $feeds[$fid] : (object)$feeds[$fid];
+  return $feeds[$fid];
 }
-
+// TODO:
 /**
  * Implementation of hook_link()
  */
@@ -966,12 +1019,12 @@ function fooaggregator_link($type, $object, $teaser = FALSE) {
  */
 function fooaggregator_theme() {
   return array(
-	       'fooaggregator_author' => array('arguments' => array('node' => NULL)),
-	       'fooaggregator_feed' => array('arguments' => array('feed' => NULL)),
-	       'fooaggregator_feed_image' => array('arguments' => array('feed' => NULL)),
+	       'fooaggregator_author' => array('variables' => array('feed' => NULL)),
+	       'fooaggregator_feed' => array('variables' => array('feed' => NULL)),
+	       'fooaggregator_feed_image' => array('variables' => array('feed' => NULL)),
 	       );
 }
-
+// TODO:
 /**
  * Implementation of hook_views_api().
  */
