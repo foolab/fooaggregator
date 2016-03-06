@@ -104,6 +104,10 @@ function fooaggregator_permission() {
  * Implementation of hook_node_access();
  */
 function fooaggregator_node_access($node, $op, $account) {
+    if (is_string($node)) {
+        return $op == 'view' ? user_access('access aggregator') : NODE_ACCESS_IGNORE;
+    }
+
     if ($node->status == 0) {
         return NODE_ACCESS_DENY;
     }
