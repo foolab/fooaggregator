@@ -205,13 +205,24 @@ function fooaggregator_delete($node) {
         ->condition('nid', $node->nid)
         ->execute();
 }
-// TODO:
+
 /**
- * Implementation of hook_cron()
- *
+ * Implementation of hook_cron_queue_info()
+ */
+function fooaggregator_cron_queue_info() {
+    return array(
+        'fooaggregator' => array(
+            'worker callback' => '_fooaggregator_cron',
+            'time' => 300, // TODO: Make this configurable?
+            'skip on cron' => FALSE,
+        ),
+    );
+}
+
+/*
  * This will refresh our feeds.
  */
-function fooaggregator_cron() {
+function _fooaggregator_cron($queue_item_data) {
   $res;
   $limit = variable_get('fooaggregator_per_cron', 5);
   $q = db_select('fooaggregator_feed', 'f')
