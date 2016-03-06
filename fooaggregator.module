@@ -1014,19 +1014,19 @@ function fooaggregator_feed_load($fid) {
 }
 // TODO:
 /**
- * Implementation of hook_link()
+ * Implements hook_node_view().
  */
-function fooaggregator_link($type, $object, $teaser = FALSE) {
-  $links = array();
+function fooaggregator_node_view($node, $view_mode, $langcode) {
+    if ($view_mode != 'rss' && $node->type == 'fooaggregator') {
+        $links['fooaggregator'] = array(
+            'title' => t('view original'),
+            'href' => $node->fooaggregator->link,
+        );
 
-  if (($type == 'node') && ($object->type == 'fooaggregator')){
-    $links['fooaggregator_link'] = array(
-					 'title' => t('view original'),
-					 'href' => $object->fooaggregator['link'],
-					 );
-  }
-
-  return $links;
+        $node->content['links']['fooaggregator'] = array(
+            '#links' => $links,
+        );
+    }
 }
 
 /**
