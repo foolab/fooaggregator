@@ -2,7 +2,7 @@
 
 // todo:
 // multiple download methods.
-// TODO:
+
 /**
  * Implementation of hook_menu()
  */
@@ -41,15 +41,6 @@ function fooaggregator_menu() {
 	 'title' => 'Add feed',
 	 'type' => MENU_LOCAL_TASK,
 	 'weight' => 3,
-	 );
-
-  $items['admin/content/fooaggregator/import'] = array(
-         'page callback' => 'drupal_get_form',
-	 'page arguments' => array('fooaggregator_admin_import'),
-	 'access arguments' => array('administer aggregator'),
-	 'title' => 'Import',
-	 'type' => MENU_LOCAL_TASK,
-	 'weight' => 4,
 	 );
 
   $items['admin/content/fooaggregator/edit/%'] = array(
@@ -643,62 +634,6 @@ function fooaggregator_admin_settings() {
 					);
 
   return system_settings_form($form);
-}
-
-/**
- * Displays the import page.
- */
-function fooaggregator_admin_import($form, &$form_state) {
-  $form = array();
-
-  $form['warning'] = array(
-      '#type' => 'markup',
-      '#value' => t('This will delete any feeds you have added manually and will import the feeds from the drupal aggregator module.<br /><b>We might not be able to empty the current tables in one run. Please rerun the process until you get a <u>success</u> message</b>.'),
-      '#suffix' => '<br /><br />',
-  );
-
-  $form['import'] = array(
-      '#type' => 'submit',
-      '#value' => t('Import'),
-  );
-
-  return $form;
-}
-// TODO:
-/**
- * Implementation of hook_form_submit() for the import page
- * this will clear the fooaggregator created items, clear the feeds table
- * and reimport the core aggregator feeds.
- */
-function fooaggregator_admin_import_submit($form, &$form_state) {
-    if (user_access('administer aggregator')) {
-        // TODO: What if cron is running ?
-        $count = 0;
-        $res = db_query_range("select nid from node where type='fooaggregator'", 20);
-        while ($o = db_fetch_object($res)) {
-            node_delete($o->nid);
-            $count++;
-        }
-
-        if ($count == 0) {
-            db_query("delete from {fooaggregator}");
-            db_query("delete from {fooaggregator_feed}");
-
-            module_invoke_all('fooaggregatorapi', 'wipe');
-
-            $res = db_query("select fid, title, url, refresh from {aggregator_feed} order by fid ASC");
-      while ($o = db_fetch_object($res)) {
-	db_query("insert into {fooaggregator_feed} (fid, title, url, refresh) VALUES(%d, '%s', '%s', %d)", $o->fid, $o->title, $o->url, $o->refresh);
-      }
-      drupal_set_message(t('Successfully imported the feeds'));
-    }
-    else {
-      drupal_set_message(t('Deleted some nodes. Please rerun the import process.'), 'error');
-      $form_state['redirect'] = 'admin/content/fooaggregator/import';
-    }
-  }
-
-  $form_state['redirect'] = 'admin/content/fooaggregator';
 }
 
 /**
