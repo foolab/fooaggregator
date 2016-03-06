@@ -21,6 +21,14 @@ function fooaggregator_views_data() {
         'field' => array('handler' => 'views_handler_field_numeric',),
         'sort' => array('handler' => 'views_handler_sort'),
         'argument' => array('handler' => 'views_handler_argument_fooaggregator_fid',),
+        'relationship' => array(
+            'base' => 'fooaggregator',
+            'base field' => 'fid',
+            'handler' => 'views_handler_relationship',
+            'title' => t('Feed'),
+            'label' => t('feed'),
+            'help' => t('Relate feed to the feed items belonging to it'),
+        ),
 /*
   'parent' => 'views_handler_argument_numeric',
   'numeric' => TRUE,
@@ -34,16 +42,17 @@ function fooaggregator_views_data() {
         'title' => t('Feed Name'),
         'help' => t('Name of the feed'),
         'field' => array('handler' => 'views_handler_field',),
+        'sort' => array('handler' => 'views_handler_sort'),
 	);
     $data['fooaggregator_feed']['url'] = array(
         'title' => t('RSS Feed URL'),
         'help' => t('Feed URL'),
-        'field' => array('handler' => 'views_handler_field',),
+        'field' => array('handler' => 'views_handler_field_url',),
 	);
     $data['fooaggregator_feed']['link'] = array(
         'title' => t('Link'),
         'help' => t('Feed link'),
-        'field' => array('handler' => 'views_handler_field',),
+        'field' => array('handler' => 'views_handler_field_url',),
 	);
     $data['fooaggregator_feed']['checked'] = array(
         'title' => t('Last Checked'),
@@ -68,7 +77,7 @@ function fooaggregator_views_data() {
     $data['fooaggregator_feed']['image_url'] = array(
         'title' => t('Image Link'),
         'help' => t('Feed image URL'),
-        'field' => array('handler' => 'views_handler_field',),
+        'field' => array('handler' => 'views_handler_field_url',),
 	);
     $data['fooaggregator_feed']['image_title'] = array(
         'title' => t('Image Title'),
@@ -119,6 +128,21 @@ function fooaggregator_views_data() {
             'base' => 'fooaggregator_feed',
             'base field' => 'fid',
             'label' => t('Rss Feed'),
+        ),
+    );
+
+    $data['fooaggregator']['nid'] = array(
+        'title' => t('Feed node ID'),
+        'help' => t('Relate a feed item to the node itself'),
+        'field' => array(
+            'handler' => 'views_handler_field',
+            'click sortable' => FALSE,
+        ),
+        'relationship' => array(
+            'handler' => 'views_handler_relationship',
+            'base' => 'node',
+            'base field' => 'nid',
+            'label' => t('Node ID'),
         ),
     );
 
