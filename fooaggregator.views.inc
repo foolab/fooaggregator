@@ -32,46 +32,57 @@ function fooaggregator_views_data() {
 	);
     $data['fooaggregator_feed']['title'] = array(
         'title' => t('Feed Name'),
+        'help' => t('Name of the feed'),
         'field' => array('handler' => 'views_handler_field',),
 	);
     $data['fooaggregator_feed']['url'] = array(
         'title' => t('RSS Feed URL'),
+        'help' => t('Feed URL'),
         'field' => array('handler' => 'views_handler_field',),
 	);
     $data['fooaggregator_feed']['link'] = array(
         'title' => t('Link'),
+        'help' => t('Feed link'),
         'field' => array('handler' => 'views_handler_field',),
 	);
     $data['fooaggregator_feed']['checked'] = array(
         'title' => t('Last Checked'),
+        'help' => t('Feed last checked timestamp'),
         'field' => array('handler' => 'views_handler_field_numeric',),
 	);
     $data['fooaggregator_feed']['updated'] = array(
         'title' => t('Last Updated'),
+        'help' => t('Feed last updated timestamp'),
         'field' => array('handler' => 'views_handler_field_numeric',),
 	);
     $data['fooaggregator_feed']['modified'] = array(
         'title' => t('Last Modified'),
+        'help' => t('Feed last modified timestamp'),
         'field' => array('handler' => 'views_handler_field_numeric',),
 	);
     $data['fooaggregator_feed']['description'] = array(
         'title' => t('Description'),
+        'help' => t('Description of the feed'),
         'field' => array('handler' => 'views_handler_field',),
 	);
     $data['fooaggregator_feed']['image_url'] = array(
         'title' => t('Image Link'),
+        'help' => t('Feed image URL'),
         'field' => array('handler' => 'views_handler_field',),
 	);
     $data['fooaggregator_feed']['image_title'] = array(
         'title' => t('Image Title'),
+        'help' => t('Feed image title'),
         'field' => array('handler' => 'views_handler_field',),
 	);
     $data['fooaggregator_feed']['image_link'] = array(
         'title' => t('Image Link'),
+        'help' => t('Feed image link'),
         'field' => array('handler' => 'views_handler_field',),
 	);
     $data['fooaggregator_feed']['visible'] = array(
         'title' => t('Visible Or Not'),
+        'help' => t('Whether feed is visible in the main aggregator page or not'),
         'field' => array('handler' => 'views_handler_field_numeric',),
         'filter' => array('handler' => 'views_handler_filter_boolean_operator',
                           'type' => 'yes-no',
